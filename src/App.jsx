@@ -5,7 +5,22 @@ import {
 } from 'recharts'
 import './App.css'
 
-const CSV_URL = import.meta.env.VITE_CSV_URL
+// Fast option: Google "gviz" CSV (needs the sheet shared as "Anyone with the link can view").
+// Fallback: the old "Publish to web" CSV link.
+const SHEET_ID = import.meta.env.VITE_SHEET_ID
+const SHEET_GID = import.meta.env.VITE_SHEET_GID || '0'
+const PUBLISHED_CSV_URL = import.meta.env.VITE_CSV_URL
+
+function buildUrl() {
+  const bust = `_=${Date.now()}`
+  if (SHEET_ID) {
+    return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${SHEET_GID}&headers=1&${bust}`
+  }
+  if (PUBLISHED_CSV_URL) {
+    return `${PUBLISHED_CSV_URL}${PUBLISHED_CSV_URL.includes('?') ? '&' : '?'}${bust}`
+  }
+  return ''
+}
 
 const CATS = [
   { key: 'N', label: 'New Install', color: '#f97316' },
@@ -96,6 +111,7 @@ function DarkTip({ active, payload, label, unit = '' }) {
 export default function App() {
   const [rows, setRows] = useState([])
   const [error, setError] = useState('')
+  const [updatedAt, setUpdatedAt] = useState(null)
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [range, setRange] = useState({ from: '', to: '' })
@@ -106,10 +122,12 @@ export default function App() {
   useEffect(() => {
     const load = async () => {
       try {
-        if (!CSV_URL) throw new Error('Missing CVS_URL in .env')
-        const res = await fetch(`${CSV_URL}&_=${Date.now()}`, { cache: 'no-store' })
+        const url = buildUrl()
+        if (!url) throw new Error('Missing VITE_SHEET_ID (or VITE_CSV_URL) in .env')
+        const res = await fetch(url, { cache: 'no-store' })
         if (!res.ok) throw new Error('HTTP ' + res.status)
         setRows(parse(await res.text()))
+        setUpdatedAt(new Date())
         setError('')
       } catch (e) {
         setError('Could not load the sheet: ' + e.message)
@@ -133,6 +151,21 @@ export default function App() {
       (!f || (r.d && r.d >= f)) &&
       (!t || (r.d && r.d <= t)))
   }, [rows, tech, range])
+
+  // Top 3 electricians by New Install (respects the date range, not the electrician filter)
+  const top3 = useMemo(() => {
+    const f = range.from ? toDate(range.from) : null
+    const t = range.to ? toDate(range.to) : null
+    const sums = new Map()
+    rows.forEach(r => {
+      if ((f && !(r.d && r.d >= f)) || (t && !(r.d && r.d <= t))) return
+      sums.set(r.electrician, (sums.get(r.electrician) || 0) + r.N)
+    })
+    return [...sums.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name))
+      .slice(0, 3)
+  }, [rows, range])
 
   // Jobs by type: All selected -> one chart per electrician. One selected -> one chart.
   const groups = useMemo(
@@ -187,7 +220,7 @@ export default function App() {
     <div className="shell">
       <aside className="side">
         <div className="brand">
-          <span className="logo"><Icon d={ICONS.bolt} /></span>
+          <a href='./' className="logo"><Icon d={ICONS.bolt} /></a>
           <b>ElectricHub</b>
         </div>
 
@@ -217,6 +250,9 @@ export default function App() {
             <span className={error ? 'dot off' : 'dot'} />
             <b>Installations</b>
             <span className="muted">{tech || 'All electricians'}</span>
+            <span className="updated">
+              Last updated {updatedAt ? updatedAt.toLocaleTimeString() : '...'}
+            </span>
           </div>
           <div className="dates">
             <label>From <input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
@@ -250,22 +286,44 @@ export default function App() {
             ) : <p className="hint">No data yet.</p>}
           </Card>
 
-          <Card icon="list" title="Job overview" sub="Spread across all job types">
-            <p className="ov-total">Jobs <span>({overviewSum})</span></p>
-            <div className="seg-bar">
-              {overview.map(c => (
-                <i key={c.key} style={{ flexGrow: c.value || 0.001, background: c.color }} />
-              ))}
-            </div>
-            <ul className="ov-list">
-              {overview.map(c => (
-                <li key={c.key}>
-                  <span><i style={{ background: c.color }} />{c.label}</span>
-                  <b>{c.value}</b>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          <div className="stack">
+            <Card icon="list" title="Job overview" sub="Spread across all job types">
+              <p className="ov-total">Jobs <span>({overviewSum})</span></p>
+              <div className="seg-bar">
+                {overview.map(c => (
+                  <i key={c.key} style={{ flexGrow: c.value || 0.001, background: c.color }} />
+                ))}
+              </div>
+              <ul className="ov-list">
+                {overview.map(c => (
+                  <li key={c.key}>
+                    <span><i style={{ background: c.color }} />{c.label}</span>
+                    <b>{c.value}</b>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+
+            <Card icon="users" title="Top 3 New Install" sub="Electricians with the most new installs">
+              {top3.length ? (
+                <ol className="rank">
+                  {top3.map((e, i) => (
+                    <li key={e.name}>
+                      <button onClick={() => chooseTech(e.name)} title={`Show ${e.name}`}>
+                        <span className={'medal m' + (i + 1)}>{i + 1}</span>
+                        <span className="rank-main">
+                          <span className="rank-row"><b>{e.name}</b><span>{e.value}</span></span>
+                          <span className="rank-track">
+                            <i style={{ width: `${top3[0].value ? (e.value / top3[0].value) * 100 : 0}%` }} />
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              ) : <p className="hint">No data yet.</p>}
+            </Card>
+          </div>
         </div>
 
         <Card icon="bolt" title="Jobs by type" sub="Select a bar to see the plan or the job list.">
@@ -346,6 +404,14 @@ export default function App() {
             </div>
           </Card>
         )}
+
+        <footer className="footer">
+          <span>© {new Date().getFullYear()} Uta · Electric Plan Dashboard</span>
+          <span>
+            Data from Google Sheets · refreshes every 15 s
+            {updatedAt ? ` · Last updated ${updatedAt.toLocaleTimeString()}` : ''}
+          </span>
+        </footer>
       </main>
     </div>
   )

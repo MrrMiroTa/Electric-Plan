@@ -89,6 +89,8 @@ input[type=date] {
 }
 .apply:hover { filter: brightness(1.08); }
 
+.updated { color: var(--muted); font-size: .78rem; padding-left: 10px; border-left: 1px solid var(--line); }
+
 /* Cards */
 .top-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 16px; }
 .card {
@@ -108,6 +110,33 @@ input[type=date] {
 .big b { font-size: 1.7rem; letter-spacing: -.02em; }
 .big span { color: var(--muted); font-size: .85rem; }
 .hint { color: var(--muted); font-size: .88rem; }
+
+/* Top 3 + stack */
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rank button {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  background: transparent; border: 0; padding: 8px; border-radius: 12px;
+}
+.rank button:hover { background: var(--soft); }
+.medal {
+  display: grid; place-items: center; flex: none; width: 30px; height: 30px;
+  border-radius: 50%; font-weight: 700; font-size: .85rem; color: #fff;
+}
+.m1 { background: #f59e0b; } .m2 { background: #94a3b8; } .m3 { background: #c2410c; }
+.rank-main { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.rank-row { display: flex; justify-content: space-between; gap: 8px; font-size: .92rem; }
+.rank-row b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-row span { color: var(--muted); font-weight: 600; }
+.rank-track { display: block; height: 6px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+.rank-track i { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+
+/* Footer */
+.footer {
+  margin-top: auto; padding: 14px 4px 2px; border-top: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px;
+  color: var(--muted); font-size: .8rem;
+}
 
 /* Job overview */
 .ov-total { font-weight: 600; margin-bottom: 12px; }
