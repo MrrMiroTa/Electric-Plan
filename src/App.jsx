@@ -41,6 +41,16 @@ function toDate(s = '') {
   return null
 }
 
+// Local date as YYYY-MM-DD (avoids toISOString(), which is UTC and can be off by one day)
+const pad = n => String(n).padStart(2, '0')
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+
+// Default filter: 1st day of the current month -> today
+function defaultRange() {
+  const now = new Date()
+  return { from: ymd(new Date(now.getFullYear(), now.getMonth(), 1)), to: ymd(now) }
+}
+
 function parse(text) {
   const { data } = Papa.parse(text.trim(), {
     header: true,
@@ -112,9 +122,10 @@ export default function App() {
   const [rows, setRows] = useState([])
   const [error, setError] = useState('')
   const [updatedAt, setUpdatedAt] = useState(null)
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [range, setRange] = useState({ from: '', to: '' })
+  const [initial] = useState(defaultRange)
+  const [from, setFrom] = useState(initial.from)
+  const [to, setTo] = useState(initial.to)
+  const [range, setRange] = useState(initial)
   const [tech, setTech] = useState(null)      // null = All electricians
   const [picked, setPicked] = useState(null)  // { tech, key?, date?, src }
   const [mode, setMode] = useState(null)      // 'view' | 'detail'
@@ -220,7 +231,7 @@ export default function App() {
     <div className="shell">
       <aside className="side">
         <div className="brand">
-          <a href='./' className="logo"><Icon d={ICONS.bolt} /></a>
+          <span className="logo"><Icon d={ICONS.bolt} /></span>
           <b>ElectricHub</b>
         </div>
 
@@ -265,14 +276,14 @@ export default function App() {
 
         <div className="top-grid">
           <Card icon="chart" title="Plan" sub="Quantity by No. Select a bar for View or Detail."
-                right={<div className="big"><b>{filtered.length}</b><span>jobs</span></div>}>
+                right={<div className="big"><b>{filtered.length}</b><span>Plan</span></div>}>
             {planData.length ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={planData} margin={{ top: 22, right: 8, left: -18, bottom: 0 }}>
                   <CartesianGrid vertical={false} strokeDasharray="3 4" stroke="var(--line)" />
                   <XAxis dataKey="label" tickLine={false} axisLine={false} />
                   <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                  <Tooltip content={<DarkTip unit=" jobs" />} cursor={false} />
+                  <Tooltip content={<DarkTip unit=" Plan" />} cursor={false} />
                   <Bar dataKey="value" radius={[8, 8, 0, 0]} cursor="pointer" maxBarSize={56}
                        onClick={pickPlan}>
                     <LabelList dataKey="value" position="top" />
@@ -287,8 +298,8 @@ export default function App() {
           </Card>
 
           <div className="stack">
-            <Card icon="list" title="Job overview" sub="Spread across all job types">
-              <p className="ov-total">Jobs <span>({overviewSum})</span></p>
+            <Card icon="list" title="Plan overview" sub="Spread across all plan types">
+              <p className="ov-total"> Plan <span>({overviewSum})</span></p>
               <div className="seg-bar">
                 {overview.map(c => (
                   <i key={c.key} style={{ flexGrow: c.value || 0.001, background: c.color }} />
@@ -326,7 +337,7 @@ export default function App() {
           </div>
         </div>
 
-        <Card icon="bolt" title="Jobs by type" sub="Select a bar to see the plan or the job list.">
+        <Card icon="bolt" title="Plans by type" sub="Select a bar to see the plan or the plan list.">
           <div className={groups.length > 1 ? 'grid' : ''}>
             {groups.map(g => (
               <div key={g.name} className={groups.length > 1 ? 'mini' : ''}>
@@ -380,7 +391,7 @@ export default function App() {
         )}
 
         {mode === 'detail' && (
-          <Card icon="list" title={`${picked.tech}${cat ? ': ' + cat.label : ''} jobs`}
+          <Card icon="list" title={`${picked.tech}${cat ? ': ' + cat.label : ''} plan`}
                 sub={`${detailRows.length} records`}>
             <div className="scroll">
               <table>
@@ -398,7 +409,7 @@ export default function App() {
                       <td><span className={'badge ' + (r.province === 'Yes' ? 'yes' : 'no')}>{r.province}</span></td>
                     </tr>
                   ))}
-                  {!detailRows.length && <tr><td colSpan="8">No jobs match these filters.</td></tr>}
+                  {!detailRows.length && <tr><td colSpan="8">No Plans match these filters.</td></tr>}
                 </tbody>
               </table>
             </div>
