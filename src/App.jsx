@@ -231,7 +231,7 @@ export default function App() {
     <div className="shell">
       <aside className="side">
         <div className="brand">
-          <span className="logo"><Icon d={ICONS.bolt} /></span>
+          <a href='./' className="logo"><Icon d={ICONS.bolt} /></a>
           <b>ElectricHub</b>
         </div>
 
@@ -275,7 +275,7 @@ export default function App() {
         {error && <p className="error" role="alert">{error}</p>}
 
         <div className="top-grid">
-          <Card icon="chart" title="Plan" sub="Quantity by No. Select a bar for View or Detail."
+          <Card icon="chart" title="Plan" sub="Quantity plan. Select a bar for View or Detail."
                 right={<div className="big"><b>{filtered.length}</b><span>Plan</span></div>}>
             {planData.length ? (
               <ResponsiveContainer width="100%" height={300}>
